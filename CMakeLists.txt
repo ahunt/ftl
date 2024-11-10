@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #set(QT_MINIMUM_VERSION 6.0.0)
 
-find_package(QT NAMES Qt5 Qt6 REQUIRED COMPONENTS Widgets LinguistTools Charts)
+find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets LinguistTools Charts)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Charts)
 
 set(TS_FILES ftl_en_GB.ts)
@@ -66,22 +66,24 @@ target_compile_options(${PROJECT_NAME} PRIVATE
 
 include(ExternalProject)
 
-set_directory_properties(PROPERTIES EP_PREFIX ${CMAKE_BINARY_DIR}/rust)
+#set_directory_properties(PROPERTIES EP_PREFIX ${CMAKE_BINARY_DIR}/rust)
 
-# TODO: figure out how to pass in release config, eventually.
 ExternalProject_Add(
-	libp8020
+	libp8020build
 	CONFIGURE_COMMAND ""
 	INSTALL_COMMAND ""
-	BUILD_COMMAND cargo build
+	BUILD_COMMAND cargo build $<IF:$<CONFIG:Debug>,,--release> 
 	SOURCE_DIR "${CMAKE_SOURCE_DIR}/libp8020"
-	BINARY_DIR "${CMAKE_SOURCE_DIR}/libp8020")
-add_dependencies(ftl libp8020)
+	BINARY_DIR "${CMAKE_SOURCE_DIR}/libp8020"
+	BUILD_BYPRODUCTS ${CMAKE_SOURCE_DIR}/libp8020/target/debug/libp8020.a ${CMAKE_SOURCE_DIR}/libp8020/target/release/libp8020.a)
+add_library(libp8020 STATIC IMPORTED)
+add_dependencies(libp8020 libp8020build)
+set_target_properties(libp8020 PROPERTIES
+  IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libp8020/target/release/libp8020.a"
+  IMPORTED_LOCATION_DEBUG "${CMAKE_SOURCE_DIR}/libp8020/target/debug/libp8020.a")
 
 target_link_libraries(ftl
-  PRIVATE debug "${CMAKE_SOURCE_DIR}/libp8020/target/debug/libp8020.a"
-  PRIVATE optimized "${CMAKE_SOURCE_DIR}/libp8020/target/release/libp8020.a"
-  PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Charts udev)
+  PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Charts libp8020 udev)
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
